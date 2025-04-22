@@ -9,12 +9,18 @@ jobs:
   backend-health:
     runs-on: ubuntu-latest
 
+    # ← supply the database connection here
+    env:
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://localhost:5432/deploymate
+      SPRING_DATASOURCE_USERNAME: parth
+      SPRING_DATASOURCE_PASSWORD: parth123
+
     services:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_DB: deploymate
-          POSTGRES_USER: parth
+          POSTGRES_DB:       deploymate
+          POSTGRES_USER:     parth
           POSTGRES_PASSWORD: parth123
         ports:
           - 5432:5432
@@ -28,37 +34,21 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v3
 
-      - name: ⚙️ Set up Java 17
+      - name: ⚙️ Set up Java 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: 📦 Build backend
-        working-directory: backend    # ← run inside backend/
-        run: |
-          chmod +x gradlew
-          ./gradlew build --no-daemon
+        working-directory: backend
+        run: ./gradlew build --no-daemon
 
       - name: 🚀 Start backend
         working-directory: backend
         run: |
-          # redirect stdout/stderr so we can print it on failure
-          nohup ./gradlew bootRun --no-daemon > backend.log 2>&1 &
+          nohup ./gradlew bootRun --no-daemon &
+          sleep 20
 
-      - name: 🕓 Wait for /healthz (up to 60s)
-        run: |
-          echo "⏳ Waiting for http://localhost:8080/healthz …"
-          for i in {1..12}; do
-            if curl --fail http://localhost:8080/healthz; then
-              echo "✅ Backend is up!"
-              exit 0
-            fi
-            echo "Still waiting ($i/12)…"
-            sleep 5
-          done
-
-          echo "❌ Failed to start backend in time. Dumping logs:"
-          cat backend/backend.log || true
-          exit 1
-
+      - name: ✅ Smoke test /healthz
+        run: curl -f http://localhost:8080/healthz
