@@ -1,3 +1,4 @@
+# .github/workflows/health-check.yml
 name: 🚨 DeployMate Health Check
 
 on:
@@ -35,25 +36,28 @@ jobs:
           distribution: 'temurin'
 
       - name: 📦 Build backend
-        working-directory: backend
-        run: chmod +x gradlew && ./gradlew build --no-daemon
+        # build.gradle, gradlew, etc live under backend/
+        run: |
+          chmod +x backend/gradlew
+          backend/gradlew build --no-daemon
+          ls -l backend/build/libs
 
       - name: 🚀 Start backend in background
-        working-directory: backend
         run: |
-          nohup ./gradlew bootRun --no-daemon > backend.log 2>&1 &
+          # launch from root but call the script under backend/
+          nohup backend/gradlew bootRun --no-daemon > backend/backend.log 2>&1 &
 
-      - name: 🕓 Wait for backend to be ready
+      - name: 🕓 Wait up to 60s for /healthz
         run: |
           echo "⏳ Waiting for http://localhost:8080/healthz to respond..."
-          for i in {1..10}; do
-            if curl -f http://localhost:8080/healthz; then
+          for i in {1..12}; do
+            if curl --fail http://localhost:8080/healthz; then
               echo "✅ Backend is up!"
               exit 0
             fi
-            echo "Still waiting..."
+            echo "Still waiting ($i/12)…"
             sleep 5
           done
-          echo "❌ Backend failed to start in time"
+          echo "❌ Backend did not start in time; dumping logs:"
           cat backend/backend.log
           exit 1
