@@ -36,15 +36,15 @@ jobs:
 
       - name: 📦 Build backend
         working-directory: backend
-        run: |
-          chmod +x ./gradlew
-          ./gradlew build --no-daemon
+        run: chmod +x gradlew && ./gradlew build --no-daemon
 
       - name: 🚀 Start backend
         working-directory: backend
         run: |
-          nohup ./gradlew bootRun --no-daemon &
-          sleep 20  # wait for backend to start
+          nohup ./gradlew bootRun --no-daemon > backend.log 2>&1 &
+          sleep 40  # Wait for app to start
+          tail -n 100 backend.log
 
       - name: ✅ Smoke test /healthz
-        run: curl -f http://localhost:8080/healthz
+        run: |
+          curl --retry 5 --retry-delay 5 --fail http://localhost:8080/healthz
