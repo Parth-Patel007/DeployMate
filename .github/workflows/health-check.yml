@@ -1,4 +1,3 @@
-# .github/workflows/health-check.yml
 name: 🚨 DeployMate Health Check
 
 on:
@@ -29,27 +28,27 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v3
 
-      - name: ⚙️ Set up Java 17
+      - name: ⚙️ Set up Java 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: 📦 Build backend
-        # build.gradle, gradlew, etc live under backend/
+        working-directory: backend    # ← run inside backend/
         run: |
-          chmod +x backend/gradlew
-          backend/gradlew build --no-daemon
-          ls -l backend/build/libs
+          chmod +x gradlew
+          ./gradlew build --no-daemon
 
-      - name: 🚀 Start backend in background
+      - name: 🚀 Start backend
+        working-directory: backend
         run: |
-          # launch from root but call the script under backend/
-          nohup backend/gradlew bootRun --no-daemon > backend/backend.log 2>&1 &
+          # redirect stdout/stderr so we can print it on failure
+          nohup ./gradlew bootRun --no-daemon > backend.log 2>&1 &
 
-      - name: 🕓 Wait up to 60s for /healthz
+      - name: 🕓 Wait for /healthz (up to 60s)
         run: |
-          echo "⏳ Waiting for http://localhost:8080/healthz to respond..."
+          echo "⏳ Waiting for http://localhost:8080/healthz …"
           for i in {1..12}; do
             if curl --fail http://localhost:8080/healthz; then
               echo "✅ Backend is up!"
@@ -58,6 +57,8 @@ jobs:
             echo "Still waiting ($i/12)…"
             sleep 5
           done
-          echo "❌ Backend did not start in time; dumping logs:"
-          cat backend/backend.log
+
+          echo "❌ Failed to start backend in time. Dumping logs:"
+          cat backend/backend.log || true
           exit 1
+
