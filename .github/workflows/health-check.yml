@@ -1,0 +1,50 @@
+name: 🚨 DeployMate Health Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  backend-health:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: deploymate
+          POSTGRES_USER: parth
+          POSTGRES_PASSWORD: parth123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v3
+
+      - name: ⚙️ Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 📦 Build backend
+        working-directory: backend
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build --no-daemon
+
+      - name: 🚀 Start backend
+        working-directory: backend
+        run: |
+          nohup ./gradlew bootRun --no-daemon &
+          sleep 20  # wait for backend to start
+
+      - name: ✅ Smoke test /healthz
+        run: curl -f http://localhost:8080/healthz
