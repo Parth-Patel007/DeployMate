@@ -1,0 +1,13 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'slack-notifications'
+
+receivers:
+  - name: 'slack-notifications'
+    slack_configs:
+      - send_resolved: true
+        channel: '#all-deploymate-slack-alerts'
+        username: 'Prometheus Bot'
+        api_url: 'https://hooks.slack.com/services/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'
