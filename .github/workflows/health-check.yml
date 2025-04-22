@@ -38,13 +38,22 @@ jobs:
         working-directory: backend
         run: chmod +x gradlew && ./gradlew build --no-daemon
 
-      - name: 🚀 Start backend
+      - name: 🚀 Start backend in background
         working-directory: backend
         run: |
           nohup ./gradlew bootRun --no-daemon > backend.log 2>&1 &
-          sleep 40  # Wait for app to start
-          tail -n 100 backend.log
 
-      - name: ✅ Smoke test /healthz
+      - name: 🕓 Wait for backend to be ready
         run: |
-          curl --retry 5 --retry-delay 5 --fail http://localhost:8080/healthz
+          echo "⏳ Waiting for http://localhost:8080/healthz to respond..."
+          for i in {1..10}; do
+            if curl -f http://localhost:8080/healthz; then
+              echo "✅ Backend is up!"
+              exit 0
+            fi
+            echo "Still waiting..."
+            sleep 5
+          done
+          echo "❌ Backend failed to start in time"
+          cat backend/backend.log
+          exit 1
