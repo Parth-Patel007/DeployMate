@@ -13,7 +13,7 @@ A full-stack dashboard to create, edit, and monitor engineering tasks across the
 - 📦 Clean UI with TailwindCSS and dark mode
 
 ## 📈 Code Coverage
-[![codecov](https://codecov.io/gh/your-username/your-repo/branch/main/graph/badge.svg)](https://codecov.io/gh/your-username/your-repo)
+[![codecov](https://codecov.io/gh/Parth-Patel007/DeployMate/graph/badge.svg?token=42LU5X6CCH)](https://codecov.io/gh/Parth-Patel007/DeployMate)
 
 ## 🛠️ Local Setup
 
