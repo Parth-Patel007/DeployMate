@@ -29,7 +29,8 @@ jobs:
 
       - name: 📦 Upload Jacoco HTML Report Artifact
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.2
+
         with:
           name: jacoco-report
           path: backend/build/reports/jacoco/test/html
