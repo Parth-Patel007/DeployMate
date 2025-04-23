@@ -1,36 +1,56 @@
-name: ✅ CI - Test & Jacoco Coverage
+name: ✅ Backend CI + Coverage
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
 
 jobs:
-  test-and-coverage:
+  backend-ci:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: deploymate
+          POSTGRES_USER: parth
+          POSTGRES_PASSWORD: parth123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-      - name: 📥 Checkout Code
+      - name: ⬇️ Checkout code
         uses: actions/checkout@v3
 
-      - name: ☕ Setup Java 17
+      - name: ⚙️ Set up Java 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 🔧 Grant execute permissions
-        run: chmod +x ./backend/gradlew
-
-      - name: 🧪 Run Tests & Generate Jacoco Report
+      - name: ✅ Run Tests + Generate Coverage
         working-directory: backend
         run: |
-          ./gradlew clean test jacocoTestReport
+          chmod +x ./gradlew
+          ./gradlew clean test jacocoTestReport --no-daemon
 
-      - name: 📦 Upload Jacoco HTML Report Artifact
-        if: success()
+      - name: 📦 Upload JaCoCo HTML Report
         uses: actions/upload-artifact@v4
-
         with:
-          name: jacoco-report
-          path: backend/build/reports/jacoco/test/html
+          name: jacoco-html
+          path: backend/build/reports/jacoco/test/html/
+
+      - name: 📈 Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: backend/build/reports/jacoco/test/jacocoTestReport.xml
+          flags: backend
+          name: deploymate-backend-report
+          verbose: true
+          # token: ${{ secrets.CODECOV_TOKEN }}  # only if repo is private
