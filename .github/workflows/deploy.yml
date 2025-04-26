@@ -48,6 +48,7 @@ jobs:
 
       - name: 🩺 Smoke-test ALB /healthz
         run: |
-          ALB_URL=$(terraform -chdir=infra output -raw alb_dns_name)
+          # Get the DNS name only, ignore wrapper noise
+          ALB_URL=$(terraform -chdir=infra output -raw alb_dns_name | tail -n1)
           echo "Hitting http://$ALB_URL/healthz"
-          curl --fail --silent http://$ALB_URL/healthz
+          curl --fail --silent --show-error "http://$ALB_URL/healthz"
