@@ -2,87 +2,60 @@ name: 🚀 Backend Build → ECR → Terraform → Smoke-test
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
 jobs:
   deploy-backend:
     runs-on: ubuntu-latest
-    # Optional: protect your production environment with GitHub Environments
-    environment: production
-    concurrency:
-      group: deploy-backend-${{ github.ref }}
-      cancel-in-progress: true
 
     steps:
-      # 1) Checkout your code
-      - name: ⬇️ Checkout code
+      - name: ⬇️ Checkout
         uses: actions/checkout@v3
 
-      # 2) Configure AWS credentials for ECR, ECS, RDS, VPC, etc.
-      - name: 🔐 Configure AWS Credentials
+      - name: 🔐 Configure AWS creds
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            us-east-1     # ← change if needed
+          aws-region: us-east-1            # ⟵ your region
 
-      # 3) Login to ECR so we can push images
-      - name: 🐳 Login to Amazon ECR
+      - name: 🐳 Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 4) Build & push your Docker image
-      - name: 🛠️ Build & Push Docker Image
+      - name: 🛠️ Build & push Docker image
         working-directory: backend
         env:
-          ECR_REGISTRY:   ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: deploymate-backend     # ← your repo name
-          IMAGE_TAG:      ${{ github.sha }}      # use the commit SHA as tag
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: deploymate-backend    # ⟵ your ECR repo name
+          IMAGE_TAG: latest
         run: |
-          docker build \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-            .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # 5) Install Terraform without the Node.js shim
+      # ➜  NEW STEP: install Terraform
       - name: 📦 Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.7.5
-          terraform_wrapper: false
+          terraform_version: 1.7.5           # use whatever version you like
 
-      # 6) Generate terraform.tfvars dynamically from GitHub Secrets
-      #    (so you don’t check sensitive tfvars into Git)
-      - name: 📝 Create Terraform vars file
-        working-directory: infra
+      - name: 📜 Terraform init & apply
+        working-directory: infra             # <— fixed path
         run: |
-          cat > terraform.tfvars <<EOF
-          private_subnet_ids = ${TERRAFORM_PRIVATE_SUBNET_IDS}
-          public_subnet_ids  = ${TERRAFORM_PUBLIC_SUBNET_IDS}
-          # any other variables you need, e.g.:
-          # vpc_id            = "${TERRAFORM_VPC_ID}"
-          EOF
-        env:
-          TERRAFORM_PRIVATE_SUBNET_IDS: ${{ secrets.PRIVATE_SUBNET_IDS }}
-          TERRAFORM_PUBLIC_SUBNET_IDS:  ${{ secrets.PUBLIC_SUBNET_IDS }}
-          # add more mappings here for other secrets
+          terraform init
+          terraform apply -auto-approve
 
-      # 7) Terraform init against your infra
-      - name: 📜 Terraform Init
-        working-directory: infra
-        run: terraform init
-
-      # 8) Terraform apply your changes (idempotent—won’t recreate existing resources)
-      - name: 🚧 Terraform Apply
-        working-directory: infra
-        run: terraform apply -auto-approve -input=false
-
-      # 9) Smoke-test the ALB health endpoint
       - name: 🩺 Smoke-test ALB /healthz
         working-directory: infra
         run: |
-          ALB_URL=$(terraform output -raw alb_dns_name)
-          echo "⏩ Hitting http://$ALB_URL/healthz"
+          # Grab only the real DNS name (letters, digits, dots or hyphens)
+          ALB_URL=$(
+            terraform -chdir=infra output -raw alb_dns_name \
+              2>/dev/null \
+              | grep -E '^[A-Za-z0-9.-]+$'
+          )
+          echo "Hitting http://$ALB_URL/healthz"
           curl --fail --silent --show-error "http://$ALB_URL/healthz"
+      
+
