@@ -37,7 +37,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: 📜 Terraform Init and Apply
-        working-directory: deploymate/infra # 🔥 update if your path differs
+        working-directory: infra # 🔥 update if your path differs
         run: |
           terraform init
           terraform apply -auto-approve
