@@ -16,9 +16,9 @@ jobs:
       - name: 🔐 Configure AWS creds
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1            # ⟵ your region
+          aws-region:            us-east-1
 
       - name: 🐳 Login to ECR
         id: login-ecr
@@ -27,35 +27,35 @@ jobs:
       - name: 🛠️ Build & push Docker image
         working-directory: backend
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: deploymate-backend    # ⟵ your ECR repo name
-          IMAGE_TAG: latest
+          ECR_REGISTRY:   ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: deploymate-backend
+          IMAGE_TAG:      latest
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # ➜  NEW STEP: install Terraform
+      # ───────────────────────────────────────────────────────────────────
+      #   REPLACE your existing “Set up Terraform” STEP with this block:
       - name: 📦 Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.7.5           # use whatever version you like
+          terraform_version: 1.7.5
+          terraform_wrapper: false      # ← disable the Node shim
+      # ───────────────────────────────────────────────────────────────────
 
       - name: 📜 Terraform init & apply
-        working-directory: infra             # <— fixed path
+        working-directory: infra
         run: |
           terraform init
           terraform apply -auto-approve
 
+      # ───────────────────────────────────────────────────────────────────
+      #   REPLACE your existing “Smoke-test ALB /healthz” STEP with this block:
       - name: 🩺 Smoke-test ALB /healthz
-        working-directory: infra      # ← run inside the infra folder
+        working-directory: infra
         run: |
-          # 1) Grab the raw DNS name, strip any quotes
+          # strip any surrounding quotes from the raw DNS output
           ALB_URL=$(terraform output -raw alb_dns_name | sed -e 's/^"//' -e 's/"$//')
-
-          # 2) Hit the health endpoint
           echo "Hitting http://$ALB_URL/healthz"
           curl --fail --silent --show-error "http://$ALB_URL/healthz"
-      
-      
-      
-
+      # ───────────────────────────────────────────────────────────────────
