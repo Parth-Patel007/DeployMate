@@ -49,13 +49,12 @@ jobs:
       - name: 🩺 Smoke-test ALB /healthz
         working-directory: infra
         run: |
-          # Grab only the real DNS name (letters, digits, dots or hyphens)
-          ALB_URL=$(
-            terraform -chdir=infra output -raw alb_dns_name \
-              2>/dev/null \
-              | grep -E '^[A-Za-z0-9.-]+$'
-          )
+          # Grab the raw output and strip any surrounding quotes
+          ALB_URL=$(terraform -chdir=infra output -raw alb_dns_name \
+            | sed -e 's/^"//' -e 's/"$//')
+
           echo "Hitting http://$ALB_URL/healthz"
           curl --fail --silent --show-error "http://$ALB_URL/healthz"
+      
       
 
