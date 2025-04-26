@@ -1,0 +1,12 @@
+[
+    {
+        "imageDigest": "sha256:83a12d33e485529418f9e84c00b9e6f8984fb031430ace57cb3d90fd253e844d"
+    },
+    {
+        "imageDigest": "sha256:fccdd63a43eb444fc842295e8541045d41b1f8bc1cfdda19872560f53e25d9aa"
+    },
+    {
+        "imageDigest": "sha256:ab767b5500c6dfd2904ca4488ce50630d5215acd187a185a226169a685b73e6e",
+        "imageTag": "latest"
+    }
+]

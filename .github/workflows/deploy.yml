@@ -1,0 +1,50 @@
+name: 🚀 Backend Build, Push to ECR, Terraform Apply, and Smoke Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1 # change if you used a different region
+
+      - name: 🐳 Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: 🛠️ Build and Push Docker Image
+        working-directory: backend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: deploymate-backend # 🔥 YOUR ECR repo name
+          IMAGE_TAG: latest
+        run: |
+          echo "Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "Pushing Docker image to ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: 📜 Terraform Init and Apply
+        working-directory: deploymate/infra # 🔥 update if your path differs
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      - name: 🩺 Smoke Test ALB /healthz
+        run: |
+          echo "Fetching ALB URL from Terraform output..."
+          ALB_URL=$(terraform -chdir=deploymate/infra output -raw alb_dns_name)
+          echo "Testing ALB health endpoint: http://$ALB_URL/healthz"
+          curl --fail http://$ALB_URL/healthz

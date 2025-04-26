@@ -4,3 +4,4 @@
 .terraform/
 crash.log
 override.tf
+terraform.tfvars
