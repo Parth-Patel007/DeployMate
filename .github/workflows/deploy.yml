@@ -47,14 +47,15 @@ jobs:
           terraform apply -auto-approve
 
       - name: 🩺 Smoke-test ALB /healthz
-        working-directory: infra
+        working-directory: infra      # ← run inside the infra folder
         run: |
-          # Grab the raw output and strip any surrounding quotes
-          ALB_URL=$(terraform -chdir=infra output -raw alb_dns_name \
-            | sed -e 's/^"//' -e 's/"$//')
+          # 1) Grab the raw DNS name, strip any quotes
+          ALB_URL=$(terraform output -raw alb_dns_name | sed -e 's/^"//' -e 's/"$//')
 
+          # 2) Hit the health endpoint
           echo "Hitting http://$ALB_URL/healthz"
           curl --fail --silent --show-error "http://$ALB_URL/healthz"
+      
       
       
 
