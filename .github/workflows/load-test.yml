@@ -1,0 +1,42 @@
+name: 🏋️‍♂️ Local k6 Load Test
+#The only reason to make this file is that k6 needs running endpoint and I dont want to make it in deploy.yml since It would fail as I dont want my cloud instances running.
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  k6-local:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # Build backend JAR (no Docker if you don't need it)
+      - name: 🔨 Build backend
+        working-directory: backend
+        run: ./gradlew bootJar --no-daemon
+
+      # Start DB + backend with Compose (dev file lives in .dev/)
+      - name: ▶️ Spin up dev stack
+        run: docker compose -f .dev/docker-compose.yml up -d
+      - name: ⏱ Wait for healthz
+        run: |
+          for i in {1..30}; do
+            curl -fs http://localhost:8080/healthz && exit 0
+            sleep 2
+          done
+          echo "backend never became healthy" && exit 1
+
+      # Run k6 from Docker
+      - name: 🧪 k6 Load Test
+        run: |
+          docker run --rm -i \
+            -e BASE_URL=http://localhost:8080 \
+            -v ${{ github.workspace }}/monitoring/k6:/scripts \
+            loadimpact/k6 run /scripts/loadtest.js
+
+      # Always tear down stack
+      - name: 🧹 Tear down
+        if: always()
+        run: docker compose -f .dev/docker-compose.yml down -v

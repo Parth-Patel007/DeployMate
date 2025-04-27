@@ -49,8 +49,7 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      # ───────────────────────────────────────────────────────────────────
-      #   REPLACE your existing “Smoke-test ALB /healthz” STEP with this block:
+
       - name: 🩺 Smoke-test ALB /healthz
         working-directory: infra
         run: |
@@ -58,4 +57,18 @@ jobs:
           ALB_URL=$(terraform output -raw alb_dns_name | sed -e 's/^"//' -e 's/"$//')
           echo "Hitting http://$ALB_URL/healthz"
           curl --fail --silent --show-error "http://$ALB_URL/healthz"
-      # ───────────────────────────────────────────────────────────────────
+          
+          
+
+      - name: 🧪 k6 Load test
+        working-directory: infra
+        if: success()
+        run: |
+          BASE="http://$(terraform output -raw alb_dns_name | sed 's/^\"//;s/\"$//')"
+          echo "Running k6 against $BASE"
+
+          docker run --rm -i \
+            -e BASE_URL=$BASE \
+            -v ${{ github.workspace }}/monitoring/k6:/scripts \
+            loadimpact/k6 run /scripts/loadtest.js
+      
