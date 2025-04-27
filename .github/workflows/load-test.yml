@@ -19,7 +19,7 @@ jobs:
 
       # Start DB + backend with Compose (dev file lives in .dev/)
       - name: ▶️ Spin up dev stack
-        run: docker compose -f .dev/docker-compose.yml up -d
+        run: docker compose -f ./docker-compose.yml up -d
       - name: ⏱ Wait for healthz
         run: |
           for i in {1..30}; do
@@ -32,11 +32,12 @@ jobs:
       - name: 🧪 k6 Load Test
         run: |
           docker run --rm -i \
-            -e BASE_URL=http://localhost:8080 \
-            -v ${{ github.workspace }}/monitoring/k6:/scripts \
-            loadimpact/k6 run /scripts/loadtest.js
+          -e BASE_URL=http://localhost:8080 \
+          -v ${{ github.workspace }}/monitoring/k6:/scripts \
+          loadimpact/k6 run /scripts/loadtest.js
+
 
       # Always tear down stack
       - name: 🧹 Tear down
         if: always()
-        run: docker compose -f .dev/docker-compose.yml down -v
+        run: docker compose -f ./docker-compose.yml down -v

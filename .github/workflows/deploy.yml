@@ -68,7 +68,8 @@ jobs:
           echo "Running k6 against $BASE"
 
           docker run --rm -i \
-            -e BASE_URL=$BASE \
-            -v ${{ github.workspace }}/monitoring/k6:/scripts \
-            loadimpact/k6 run /scripts/loadtest.js
+          -e BASE_URL=http://localhost:8080 \
+          -v ${{ github.workspace }}/monitoring/k6:/scripts \
+          loadimpact/k6 run /scripts/loadtest.js
+
       
