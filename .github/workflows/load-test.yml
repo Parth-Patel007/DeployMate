@@ -22,8 +22,10 @@ jobs:
       - name: ▶️ Spin up dev stack
         run: docker compose up -d
 
-      # Wait until backend /healthz is ready
-      - name: ⏱ Wait for backend readiness
+      - name: ▶️ Spin up local backend + db
+        run: docker compose up -d
+
+      - name: ⏳ Wait until backend is healthy
         run: |
           for i in {1..30}; do
             echo "Trying http://localhost:8080/healthz (try $i)"
@@ -33,17 +35,12 @@ jobs:
             fi
             sleep 2
           done
-          echo "Backend never became healthy ❌" && exit 1
+          echo "Backend failed to become healthy ❌"
+          exit 1
 
-      # Run k6 load test using latest image
-      - name: 🧪 k6 Load Test
+      - name: 🧪 Run k6 Load Test
         run: |
           docker run --rm -i \
             -e BASE_URL=http://localhost:8080 \
             -v ${{ github.workspace }}/monitoring/k6:/scripts \
             grafana/k6 run /scripts/loadtest.js
-
-      # Always shut down containers (even if k6 fails)
-      - name: 🧹 Tear down
-        if: always()
-        run: docker compose down -v
