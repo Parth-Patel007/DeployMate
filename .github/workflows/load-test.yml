@@ -9,10 +9,27 @@ jobs:
   k6-local:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
+    # Bring up a Postgres service for your app to talk to
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: deploymate
+          POSTGRES_USER: parth
+          POSTGRES_PASSWORD: parth123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
-      - name: ☕ Set up JDK 17
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v3
+
+      - name: ☕ Set up Java 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
@@ -22,34 +39,41 @@ jobs:
         working-directory: backend
         run: ./gradlew bootJar --no-daemon
 
-      # ─────────────────────────────────────────────────────────────
-      - name: ▶️ Start backend + db
-        run: docker compose up -d          # ← only once!
-
-      - name: ⏳ Wait until /healthz is OK
+      - name: 🚀 Start backend (in background)
+        working-directory: backend
         run: |
-          for i in {1..60}; do             # 2 min max
-            if curl -fs http://localhost:8080/healthz ; then
+          nohup java -jar build/libs/*.jar &    # launch your Spring Boot app
+          echo "Waiting 20s for backend to start…"  
+          sleep 20                                # give it time to bind and init
+
+      - name: ⏳ Wait until /healthz is healthy
+        run: |
+          for i in {1..30}; do
+            echo "Try $i: curl -sSf http://localhost:8080/healthz && echo ✅ && exit 0"
+            if curl -fs http://localhost:8080/healthz; then
               echo "Backend is live ✅"
               exit 0
             fi
-            echo "Waiting… ($i)"
             sleep 2
           done
-          echo "Backend never became healthy ❌" && exit 1
+          echo "Backend never became healthy ❌" >&2
+          exit 1
 
-      - name: 🧪 k6 Load Test
+      - name: 🧪 Run k6 Load Test
         run: |
+          docker pull grafana/k6
           docker run --rm -i \
             -e BASE_URL=http://localhost:8080 \
             -v ${{ github.workspace }}/monitoring/k6:/scripts \
             grafana/k6 run /scripts/loadtest.js
 
-      # dump logs if something still fails
-      - name: 📄 Backend logs on failure
+      - name: 📄 Dump backend logs on failure
         if: failure()
-        run: docker logs $(docker ps -qf "name=deploymate-backend") || true
+        run: |
+          echo "====== Backend logs ======"
+          ps aux | grep '[j]ava -jar' | awk '{print $2}' | xargs -r docker logs || true
 
-      - name: 🧹 Tear down stack
+      - name: 🧹 Cleanup background processes
         if: always()
-        run: docker compose down -v
+        run: |
+          pkill -f "java -jar" || true
