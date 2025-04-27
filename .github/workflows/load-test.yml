@@ -10,60 +10,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ────────────────────────────────────────────────────────────────
       - uses: actions/checkout@v3
 
-      # Java needed for ./gradlew bootJar
       - name: ☕ Set up JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      # Build backend JAR so the image/compose can copy or mount it
       - name: 🔨 Build backend JAR
         working-directory: backend
         run: ./gradlew bootJar --no-daemon
 
-      # ─── Spin up local stack -------------------------------------------------
-      - name: ▶️ Start backend + db with docker-compose
-        run: docker compose up -d            # default picks ./docker-compose.yml
+      # ─────────────────────────────────────────────────────────────
+      - name: ▶️ Start backend + db
+        run: docker compose up -d          # ← only once!
 
-      # Optional: show what actually started
-      - name: 🐳 Show running containers
-        run: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-      # ─── Wait until /healthz returns 200 -------------------------------------
-      - name: ⏳ Wait for backend health
+      - name: ⏳ Wait until /healthz is OK
         run: |
-          for i in {1..90}; do   # 60 × 2 s = 120 s max
-            echo "Try $i: curl http://localhost:8080/healthz"
+          for i in {1..60}; do             # 2 min max
             if curl -fs http://localhost:8080/healthz ; then
               echo "Backend is live ✅"
               exit 0
             fi
+            echo "Waiting… ($i)"
             sleep 2
           done
-          echo "Backend never became healthy ❌" >&2
-          exit 1
+          echo "Backend never became healthy ❌" && exit 1
 
-      # ─── Run the k6 load test -----------------------------------------------
       - name: 🧪 k6 Load Test
         run: |
-          docker pull grafana/k6                            # preload for clarity
           docker run --rm -i \
             -e BASE_URL=http://localhost:8080 \
             -v ${{ github.workspace }}/monitoring/k6:/scripts \
             grafana/k6 run /scripts/loadtest.js
 
-      # ─── On any failure, dump backend logs before tearing down --------------
-      - name: 📄 Dump backend logs (if failed)
+      # dump logs if something still fails
+      - name: 📄 Backend logs on failure
         if: failure()
-        run: |
-          echo "===== backend container logs ====="
-          docker logs $(docker ps -aqf "name=backend" | head -n1) || true
+        run: docker logs $(docker ps -qf "name=deploymate-backend") || true
 
-      # ─── Always clean up -----------------------------------------------------
       - name: 🧹 Tear down stack
         if: always()
         run: docker compose down -v
