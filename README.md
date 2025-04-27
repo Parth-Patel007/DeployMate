@@ -1,8 +1,8 @@
 # 📋 DeployMate – DevOps Task Management Dashboard  
 *A single repo that goes all the way from* **code → tests → load-test → AWS**.
 
-[![Backend CI](https://github.com/Parth-Patel007/DeployMate/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/Parth-Patel007/DeployMate/actions/workflows/backend-ci.yml)  
-[![Cypress E2E](https://github.com/Parth-Patel007/DeployMate/actions/workflows/cypress-e2e.yml/badge.svg)](https://github.com/Parth-Patel007/DeployMate/actions/workflows/cypress-e2e.yml)  
+[![Backend CI](https://github.com/Parth-Patel007/DeployMate/actions/workflows/ci.yml/badge.svg)](https://github.com/Parth-Patel007/DeployMate/actions/workflows/ci.yml)  
+[![Cypress E2E](https://github.com/Parth-Patel007/DeployMate/actions/workflows/frontend-e2e.yml/badge.svg)](https://github.com/Parth-Patel007/DeployMate/actions/workflows/frontend-e2e.yml)  
 [![k6 Load Test](https://github.com/Parth-Patel007/DeployMate/actions/workflows/load-test.yml/badge.svg)](https://github.com/Parth-Patel007/DeployMate/actions/workflows/load-test.yml)  
 [![Coverage](https://codecov.io/gh/Parth-Patel007/DeployMate/branch/main/graph/badge.svg)](https://codecov.io/gh/Parth-Patel007/DeployMate)
 
