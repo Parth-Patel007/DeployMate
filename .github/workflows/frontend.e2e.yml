@@ -1,0 +1,45 @@
+name: ✅ Frontend E2E (Cypress)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # Install Node & deps
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: 🔄 NPM ci
+        working-directory: frontend
+        run: npm ci
+
+      # Start Vite in background
+      - name: ▶️ Launch dev server
+        working-directory: frontend
+        run: |
+          npm run dev -- --host &
+          npx wait-on http://localhost:5173
+        env:
+          CI: true
+
+      # Run Cypress headless
+      - name: 🧪 Cypress run
+        working-directory: frontend
+        run: npm run test:e2e
+
+      # Upload screenshots/videos if tests fail
+      - name: 📤 Upload Cypress artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            frontend/cypress/screenshots
+            frontend/cypress/videos
